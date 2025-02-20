@@ -23,10 +23,17 @@ func TestDecompress(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}
-		t.Logf("Unmarshaled: %v", data)
+		t.Logf("Unmarshaled: %+v", data)
 		if data.K1 != 1 || data.K2 != "2" || len(data.K3) != 2 || data.K3[0] != 3 || data.K3[1] != 4 || data.K5.K6 != 7 || data.K5.K8 != "8" {
 			t.Fatalf("Unmarshaled data is invalid")
 		}
+
+		dataV2 := &MyStruct{}
+		err = Unmarshal(raw, &dataV2)
+		if err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
+		}
+		t.Logf("Unmarshaled: %+v", dataV2)
 	}
 	{
 		raw := []byte(`1`)

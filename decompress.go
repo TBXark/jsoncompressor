@@ -16,20 +16,16 @@ func Unmarshal(data []byte, target interface{}) error {
 	if val.Kind() != reflect.Ptr || val.IsNil() {
 		return ErrorUnmarshalTargetNotNilPtr
 	}
-	val = val.Elem()
-	if val.Kind() != reflect.Struct {
-		return json.Unmarshal(data, target)
-	}
-	var dataSlice []interface{}
-	err := json.Unmarshal(data, &dataSlice)
+	var jsonData interface{}
+	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
 		return err
 	}
-	jsonMap, err := decompressIntoStruct(dataSlice, val)
+	jsonObj, err := decompressValue(jsonData, val)
 	if err != nil {
 		return err
 	}
-	jsonBytes, err := json.Marshal(jsonMap)
+	jsonBytes, err := json.Marshal(jsonObj)
 	if err != nil {
 		return err
 	}
