@@ -66,9 +66,10 @@ func decompressValue(data interface{}, field reflect.Value) (interface{}, error)
 	}
 	for field.Kind() == reflect.Ptr {
 		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
+			field = reflect.New(field.Type().Elem())
+		} else {
+			field = field.Elem()
 		}
-		field = field.Elem()
 	}
 	switch field.Kind() {
 	case reflect.Struct:
