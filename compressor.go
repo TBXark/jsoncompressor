@@ -6,26 +6,19 @@ import (
 )
 
 func Marshal(v interface{}) ([]byte, error) {
-	compressed, err := compress(v)
+	compressed, err := compressValue(reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(compressed)
 }
 
-func compress(v interface{}) (interface{}, error) {
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-	return compressValue(val)
-}
-
 func compressStruct(val reflect.Value) ([]interface{}, error) {
 	typ := val.Type()
-	result := make([]interface{}, 0)
+	numFields := val.NumField()
+	result := make([]interface{}, 0, numFields)
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := 0; i < numFields; i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 		jsonTag := fieldType.Tag.Get("json")
@@ -56,7 +49,7 @@ func compressValue(v reflect.Value) (interface{}, error) {
 			result[i] = val
 		}
 		return result, nil
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			return nil, nil
 		}

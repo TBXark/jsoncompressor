@@ -7,14 +7,10 @@ import (
 	"strings"
 )
 
-var (
-	ErrorUnmarshalTargetNotNilPtr = fmt.Errorf("target must be a non-nil pointer")
-)
-
 func Unmarshal(data []byte, target interface{}) error {
 	val := reflect.ValueOf(target)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
-		return ErrorUnmarshalTargetNotNilPtr
+	if val.Kind() != reflect.Pointer || val.IsNil() {
+		return fmt.Errorf("target must be a non-nil pointer")
 	}
 	var jsonData interface{}
 	err := json.Unmarshal(data, &jsonData)
@@ -60,7 +56,7 @@ func decompressValue(data interface{}, field reflect.Value) (interface{}, error)
 	if data == nil {
 		return nil, nil
 	}
-	for field.Kind() == reflect.Ptr {
+	for field.Kind() == reflect.Pointer {
 		if field.IsNil() {
 			field = reflect.New(field.Type().Elem())
 		} else {

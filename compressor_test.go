@@ -36,6 +36,7 @@ func TestCompress(t *testing.T) {
 		if string(raw) != target {
 			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
+		t.Logf("Marshaled: %s", raw)
 	}
 	{
 		raw, err := Marshal(1)
@@ -46,16 +47,18 @@ func TestCompress(t *testing.T) {
 		if string(raw) != target {
 			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
+		t.Logf("Marshaled: %s", raw)
 	}
 	{
-		raw, err := Marshal([]string{"test"})
+		raw, err := Marshal([]string{"test", "test2"})
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
-		target := `["test"]`
+		target := `["test","test2"]`
 		if string(raw) != target {
 			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
+		t.Logf("Marshaled: %s", raw)
 	}
 
 }

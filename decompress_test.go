@@ -42,7 +42,7 @@ func TestDecompress(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}
-		t.Logf("Unmarshaled: %v", data)
+		t.Logf("Unmarshaled: %+v", data)
 	}
 	{
 		raw := []byte(`["test"]`)
