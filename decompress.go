@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 var (
-	ErrorUnmarshalNotEnoughData   = fmt.Errorf("not enough data for field")
 	ErrorUnmarshalTargetNotNilPtr = fmt.Errorf("target must be a non-nil pointer")
 )
 
@@ -25,61 +25,83 @@ func Unmarshal(data []byte, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	return decompressIntoStruct(dataSlice, val)
+	jsonMap, err := decompressIntoStruct(dataSlice, val)
+	if err != nil {
+		return err
+	}
+	jsonBytes, err := json.Marshal(jsonMap)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonBytes, target)
 }
 
-func decompressIntoStruct(data []interface{}, val reflect.Value) error {
+func decompressIntoStruct(data []interface{}, val reflect.Value) (interface{}, error) {
 	typ := val.Type()
 	dataIndex := 0
-
+	jsonMap := make(map[string]interface{})
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
-		jsonTag := fieldType.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
+		jsonTag, ok := getJsonKey(&fieldType)
+		if !ok {
 			continue
 		}
 		if dataIndex >= len(data) {
-			return ErrorUnmarshalNotEnoughData
+			break
 		}
-		if err := decompressValue(data[dataIndex], field); err != nil {
-			return err
+		value, err := decompressValue(data[dataIndex], field)
+		if err != nil {
+			return nil, err
 		}
+		jsonMap[jsonTag] = value
 		dataIndex++
 	}
-	return nil
+	return jsonMap, nil
 }
 
-func decompressValue(data interface{}, field reflect.Value) error {
+func decompressValue(data interface{}, field reflect.Value) (interface{}, error) {
 	if data == nil {
-		return nil
+		return nil, nil
+	}
+	for field.Kind() == reflect.Ptr {
+		if field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		field = field.Elem()
 	}
 	switch field.Kind() {
 	case reflect.Struct:
 		dataSlice, ok := data.([]interface{})
 		if !ok {
-			return fmt.Errorf("expected array for struct field")
+			return nil, fmt.Errorf("expected array for struct field")
 		}
 		return decompressIntoStruct(dataSlice, field)
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		dataSlice, ok := data.([]interface{})
 		if !ok {
-			return fmt.Errorf("expected array for slice field")
+			return nil, fmt.Errorf("expected array for slice field")
 		}
 		slice := reflect.MakeSlice(field.Type(), len(dataSlice), len(dataSlice))
+		jsonSlice := make([]interface{}, len(dataSlice))
 		for i := 0; i < len(dataSlice); i++ {
-			if err := decompressValue(dataSlice[i], slice.Index(i)); err != nil {
-				return err
+			item, err := decompressValue(dataSlice[i], slice.Index(i))
+			if err != nil {
+				return nil, err
 			}
+			jsonSlice[i] = item
 		}
-		field.Set(slice)
+		return jsonSlice, nil
 	default:
-		v := reflect.ValueOf(data)
-		if v.Type().ConvertibleTo(field.Type()) {
-			field.Set(v.Convert(field.Type()))
-		} else {
-			return fmt.Errorf("cannot convert %v to %v", v.Type(), field.Type())
-		}
+		return data, nil
 	}
-	return nil
+}
+
+func getJsonKey(field *reflect.StructField) (string, bool) {
+	tag := field.Tag.Get("json")
+	if tag == "" || tag == "-" {
+		return "", false
+	}
+	tagParts := strings.Split(tag, ",")
+	return tagParts[0], true
 }
