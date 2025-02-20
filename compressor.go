@@ -2,12 +2,7 @@ package jsoncompressor
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
-)
-
-var (
-	ErrMarshalInputNotStruct = fmt.Errorf("input must be a struct or pointer to struct")
 )
 
 func Marshal(v interface{}) ([]byte, error) {
@@ -18,15 +13,12 @@ func Marshal(v interface{}) ([]byte, error) {
 	return json.Marshal(compressed)
 }
 
-func compress(v interface{}) ([]interface{}, error) {
+func compress(v interface{}) (interface{}, error) {
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
-	if val.Kind() != reflect.Struct {
-		return nil, ErrMarshalInputNotStruct
-	}
-	return compressStruct(val)
+	return compressValue(val)
 }
 
 func compressStruct(val reflect.Value) ([]interface{}, error) {

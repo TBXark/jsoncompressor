@@ -7,30 +7,25 @@ import (
 )
 
 var (
-	ErrorUnmarshalInputNotStruct  = fmt.Errorf("input must be a struct or pointer to struct")
 	ErrorUnmarshalNotEnoughData   = fmt.Errorf("not enough data for field")
 	ErrorUnmarshalTargetNotNilPtr = fmt.Errorf("target must be a non-nil pointer")
 )
 
 func Unmarshal(data []byte, target interface{}) error {
-	var compressed []interface{}
-	if err := json.Unmarshal(data, &compressed); err != nil {
-		return err
-	}
-	return decompress(compressed, target)
-}
-
-func decompress(data []interface{}, target interface{}) error {
 	val := reflect.ValueOf(target)
 	if val.Kind() != reflect.Ptr || val.IsNil() {
 		return ErrorUnmarshalTargetNotNilPtr
 	}
 	val = val.Elem()
 	if val.Kind() != reflect.Struct {
-		return ErrorUnmarshalInputNotStruct
+		return json.Unmarshal(data, target)
 	}
-
-	return decompressIntoStruct(data, val)
+	var dataSlice []interface{}
+	err := json.Unmarshal(data, &dataSlice)
+	if err != nil {
+		return err
+	}
+	return decompressIntoStruct(dataSlice, val)
 }
 
 func decompressIntoStruct(data []interface{}, val reflect.Value) error {

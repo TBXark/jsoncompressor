@@ -30,27 +30,31 @@ func TestCompress(t *testing.T) {
 		}
 		raw, err := Marshal(data)
 		if err != nil {
-			t.Fatalf("Compress failed: %v", err)
+			t.Fatalf("Marshal failed: %v", err)
 		}
 		target := `[1,"2",[3,4],[7,"8"]]`
 		if string(raw) != target {
-			t.Fatalf("Compressed data is invalid, got: %s", raw)
+			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
 	}
 	{
 		raw, err := Marshal(1)
 		if err != nil {
-			t.Fatalf("Compress failed: %v", err)
+			t.Fatalf("Marshal failed: %v", err)
+		}
+		target := `1`
+		if string(raw) != target {
+			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
 	}
 	{
 		raw, err := Marshal([]string{"test"})
 		if err != nil {
-			t.Fatalf("Compress failed: %v", err)
+			t.Fatalf("Marshal failed: %v", err)
 		}
 		target := `["test"]`
 		if string(raw) != target {
-			t.Fatalf("Compressed data is invalid, got: %s", raw)
+			t.Fatalf("Marshaled data is invalid, got: %s", raw)
 		}
 	}
 
