@@ -5,7 +5,6 @@ import (
 )
 
 func TestDecompress(t *testing.T) {
-
 	{
 		type MyStruct struct {
 			K1 int    `json:"k1"`
