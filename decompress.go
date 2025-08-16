@@ -30,24 +30,31 @@ func Unmarshal(data []byte, target interface{}) error {
 
 func decompressIntoStruct(data []interface{}, val reflect.Value) (interface{}, error) {
 	typ := val.Type()
-	dataIndex := 0
-	jsonMap := make(map[string]interface{})
+	type fld struct {
+		name  string
+		index int
+	}
+	fields := make([]fld, 0, val.NumField())
 	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
 		fieldType := typ.Field(i)
-		jsonTag, ok := getJsonKey(&fieldType)
-		if !ok {
-			continue
+		name, ok := getJsonKey(&fieldType)
+		if ok {
+			fields = append(fields, fld{name: name, index: i})
 		}
-		if dataIndex >= len(data) {
-			break
-		}
-		value, err := decompressValue(data[dataIndex], field)
+	}
+
+	if len(data) != len(fields) {
+		return nil, fmt.Errorf("field count mismatch: have %d values, want %d", len(data), len(fields))
+	}
+
+	jsonMap := make(map[string]interface{}, len(fields))
+	for i, f := range fields {
+		field := val.Field(f.index)
+		value, err := decompressValue(data[i], field)
 		if err != nil {
 			return nil, err
 		}
-		jsonMap[jsonTag] = value
-		dataIndex++
+		jsonMap[f.name] = value
 	}
 	return jsonMap, nil
 }
@@ -91,10 +98,16 @@ func decompressValue(data interface{}, field reflect.Value) (interface{}, error)
 }
 
 func getJsonKey(field *reflect.StructField) (string, bool) {
-	tag := field.Tag.Get("json")
-	if tag == "" || tag == "-" {
+	if field.PkgPath != "" { // unexported
 		return "", false
 	}
-	tagParts := strings.Split(tag, ",")
-	return tagParts[0], true
+	tag := field.Tag.Get("json")
+	if tag == "-" || tag == "" {
+		return "", false
+	}
+	name := strings.Split(tag, ",")[0]
+	if name == "" {
+		name = field.Name
+	}
+	return name, true
 }

@@ -62,3 +62,21 @@ func TestCompress(t *testing.T) {
 	}
 
 }
+
+func TestCompressSkipsUnexported(t *testing.T) {
+	type MyStruct struct {
+		A int    `json:"a"`
+		b string `json:"b"` // unexported, should be skipped
+		C int    `json:"c"`
+	}
+	data := MyStruct{A: 1, b: "hidden", C: 3}
+	raw, err := Marshal(data)
+	if err != nil {
+		t.Fatalf("Marshal failed: %v", err)
+	}
+	// unexported field 'b' should not be present
+	target := `[1,3]`
+	if string(raw) != target {
+		t.Fatalf("Marshaled data is invalid, got: %s", raw)
+	}
+}

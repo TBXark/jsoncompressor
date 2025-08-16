@@ -54,3 +54,34 @@ func TestDecompress(t *testing.T) {
 		t.Logf("Unmarshaled: %v", data)
 	}
 }
+
+func TestDecompressTagWithoutNameAndLengthMismatch(t *testing.T) {
+	type S struct {
+		A int `json:",omitempty"`
+		B int `json:"b"`
+	}
+	{
+		raw := []byte(`[10,20]`)
+		var s S
+		if err := Unmarshal(raw, &s); err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
+		}
+		if s.A != 10 || s.B != 20 {
+			t.Fatalf("Unexpected values: %+v", s)
+		}
+	}
+	{
+		raw := []byte(`[1,2,3]`)
+		var s S
+		if err := Unmarshal(raw, &s); err == nil {
+			t.Fatalf("expected error on length mismatch (too many)")
+		}
+	}
+	{
+		raw := []byte(`[1]`)
+		var s S
+		if err := Unmarshal(raw, &s); err == nil {
+			t.Fatalf("expected error on length mismatch (too few)")
+		}
+	}
+}

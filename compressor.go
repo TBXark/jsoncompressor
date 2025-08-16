@@ -21,6 +21,9 @@ func compressStruct(val reflect.Value) ([]interface{}, error) {
 	for i := 0; i < numFields; i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
+		if !fieldType.IsExported() {
+			continue
+		}
 		jsonTag := fieldType.Tag.Get("json")
 		if jsonTag == "" || jsonTag == "-" {
 			continue
