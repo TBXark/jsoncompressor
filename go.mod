@@ -1,3 +1,3 @@
-module github.com/TBXark/jsoncompressor
+module github.com/go-sphere/jsoncompressor
 
 go 1.23
