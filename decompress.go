@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
-func Unmarshal(data []byte, target interface{}) error {
+func Unmarshal(data []byte, target any) error {
 	val := reflect.ValueOf(target)
 	if val.Kind() != reflect.Pointer || val.IsNil() {
 		return fmt.Errorf("target must be a non-nil pointer")
 	}
-	var jsonData interface{}
+	var jsonData any
 	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
 		return err
@@ -28,38 +27,30 @@ func Unmarshal(data []byte, target interface{}) error {
 	return json.Unmarshal(jsonBytes, target)
 }
 
-func decompressIntoStruct(data []interface{}, val reflect.Value) (interface{}, error) {
-	typ := val.Type()
-	type fld struct {
-		name  string
-		index int
-	}
-	fields := make([]fld, 0, val.NumField())
-	for i := 0; i < val.NumField(); i++ {
-		fieldType := typ.Field(i)
-		name, ok := getJsonKey(&fieldType)
-		if ok {
-			fields = append(fields, fld{name: name, index: i})
+func decompressIntoStruct(data []any, val reflect.Value) (any, error) {
+	meta := getStructMeta(val.Type())
+	if meta == nil {
+		if len(data) != 0 {
+			return nil, fmt.Errorf("field count mismatch: have %d values, want %d", len(data), 0)
 		}
+		return map[string]any{}, nil
 	}
-
-	if len(data) != len(fields) {
-		return nil, fmt.Errorf("field count mismatch: have %d values, want %d", len(data), len(fields))
+	if len(data) != len(meta.fields) {
+		return nil, fmt.Errorf("field count mismatch: have %d values, want %d", len(data), len(meta.fields))
 	}
-
-	jsonMap := make(map[string]interface{}, len(fields))
-	for i, f := range fields {
+	jsonMap := make(map[string]any, len(meta.fields))
+	for i, f := range meta.fields {
 		field := val.Field(f.index)
 		value, err := decompressValue(data[i], field)
 		if err != nil {
 			return nil, err
 		}
-		jsonMap[f.name] = value
+		jsonMap[f.jsonName] = value
 	}
 	return jsonMap, nil
 }
 
-func decompressValue(data interface{}, field reflect.Value) (interface{}, error) {
+func decompressValue(data any, field reflect.Value) (any, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -72,18 +63,18 @@ func decompressValue(data interface{}, field reflect.Value) (interface{}, error)
 	}
 	switch field.Kind() {
 	case reflect.Struct:
-		dataSlice, ok := data.([]interface{})
+		dataSlice, ok := data.([]any)
 		if !ok {
 			return nil, fmt.Errorf("expected array for struct field")
 		}
 		return decompressIntoStruct(dataSlice, field)
 	case reflect.Slice, reflect.Array:
-		dataSlice, ok := data.([]interface{})
+		dataSlice, ok := data.([]any)
 		if !ok {
 			return nil, fmt.Errorf("expected array for slice field")
 		}
 		slice := reflect.MakeSlice(field.Type(), len(dataSlice), len(dataSlice))
-		jsonSlice := make([]interface{}, len(dataSlice))
+		jsonSlice := make([]any, len(dataSlice))
 		for i := 0; i < len(dataSlice); i++ {
 			item, err := decompressValue(dataSlice[i], slice.Index(i))
 			if err != nil {
@@ -95,19 +86,4 @@ func decompressValue(data interface{}, field reflect.Value) (interface{}, error)
 	default:
 		return data, nil
 	}
-}
-
-func getJsonKey(field *reflect.StructField) (string, bool) {
-	if field.PkgPath != "" { // unexported
-		return "", false
-	}
-	tag := field.Tag.Get("json")
-	if tag == "-" || tag == "" {
-		return "", false
-	}
-	name := strings.Split(tag, ",")[0]
-	if name == "" {
-		name = field.Name
-	}
-	return name, true
 }

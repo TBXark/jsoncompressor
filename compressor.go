@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func Marshal(v interface{}) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	compressed, err := compressValue(reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
@@ -13,37 +13,29 @@ func Marshal(v interface{}) ([]byte, error) {
 	return json.Marshal(compressed)
 }
 
-func compressStruct(val reflect.Value) ([]interface{}, error) {
-	typ := val.Type()
-	numFields := val.NumField()
-	result := make([]interface{}, 0, numFields)
-
-	for i := 0; i < numFields; i++ {
-		field := val.Field(i)
-		fieldType := typ.Field(i)
-		if !fieldType.IsExported() {
-			continue
-		}
-		jsonTag := fieldType.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
-			continue
-		}
-		value, err := compressValue(field)
+func compressStruct(val reflect.Value) ([]any, error) {
+	meta := getStructMeta(val.Type())
+	if meta == nil {
+		// no fields or not a struct (defensive)
+		return []any{}, nil
+	}
+	result := make([]any, 0, len(meta.fields))
+	for _, f := range meta.fields {
+		v, err := compressValue(val.Field(f.index))
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, value)
+		result = append(result, v)
 	}
-
 	return result, nil
 }
 
-func compressValue(v reflect.Value) (interface{}, error) {
+func compressValue(v reflect.Value) (any, error) {
 	switch v.Kind() {
 	case reflect.Struct:
 		return compressStruct(v)
 	case reflect.Slice, reflect.Array:
-		result := make([]interface{}, v.Len())
+		result := make([]any, v.Len())
 		for i := 0; i < v.Len(); i++ {
 			val, err := compressValue(v.Index(i))
 			if err != nil {

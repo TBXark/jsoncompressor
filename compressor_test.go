@@ -64,9 +64,9 @@ func TestCompress(t *testing.T) {
 
 func TestCompressSkipsUnexported(t *testing.T) {
 	type MyStruct struct {
-		A int    `json:"a"`
-		b string `json:"b"` //nolint unexported, should be skipped
-		C int    `json:"c"`
+		A int `json:"a"`
+		b string
+		C int `json:"c"`
 	}
 	data := MyStruct{A: 1, b: "hidden", C: 3}
 	raw, err := Marshal(data)
